@@ -1,6 +1,9 @@
 import numpy as np
 import scipy.sparse as sp
 import scipy.sparse.linalg as la
+from mpl_toolkits.mplot3d import Axes3D
+import matplotlib.pyplot as plt
+from matplotlib import cm
 
 class BackwardEuler:
     def __init__(self, rod_xl, rod_xr, tank_xl, tank_xr, t0, tf, beta, J, N, solar_flux, initial_conds, source=None):
@@ -80,14 +83,8 @@ class BackwardEuler:
             b += self.source(self.x)
             self.U[:, i + 1] = la.spsolve(A, self.U[:, i] + b)
 
-    # taken from https://matplotlib.org/mpl_toolkits/mplot3d/tutorial.html
+    # adapted from https://matplotlib.org/mpl_toolkits/mplot3d/tutorial.html
     def plotSolution(self, tank_only=False):
-        from mpl_toolkits.mplot3d import Axes3D
-        import matplotlib.pyplot as plt
-        from matplotlib import cm
-        from matplotlib.ticker import LinearLocator, FormatStrFormatter
-        import numpy as np
-
         fig = plt.figure()
         ax = fig.gca(projection='3d')
 
@@ -115,12 +112,9 @@ class BackwardEuler:
         surf = ax.plot_surface(X, T, U, cmap=cm.coolwarm, linewidth=0, antialiased=False)
 
         # Customize the z axis.
-        ax.set_xlabel("x")
-        ax.set_ylabel("t")
-        ax.set_zlabel("Heat")
-        ax.zaxis.set_major_locator(LinearLocator(10))
-        ax.zaxis.set_major_formatter(FormatStrFormatter('%.02f'))
+        ax.set_xlabel("x (meters)")
+        ax.set_ylabel("t (days)")
+        ax.set_zlabel("Heat Energy (Joules)")
 
         # Add a color bar which maps values to colors.
-        fig.colorbar(surf, shrink=0.5, aspect=5)
         plt.show()

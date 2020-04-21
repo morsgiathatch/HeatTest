@@ -1,6 +1,7 @@
 from src import BackwardEuler as be
 import numpy as np
 
+
 # Main driver for program
 def main():
     rod_xl = 0.0
@@ -9,8 +10,8 @@ def main():
     tank_xr = 6.0
     t0 = 0.0
     tf = 3.
-    J = 10
-    N = 20
+    J = 100
+    N = 1000
     seconds_per_day = 86400
     beta_tank = 0.75e-6 * seconds_per_day            # concrete tank
     beta_rod = 22.8e-6 * seconds_per_day             # iron rod
@@ -24,7 +25,7 @@ def main():
                 ret_beta[i] = beta_rod
         return ret_beta
 
-    solar_energy_density = 1000.0  # joules / (sec * meter^2)
+    solar_energy_density = 1000.0 * seconds_per_day # joules / (sec * meter^2)
     solar_flux = lambda t: solar_energy_density * np.sin(2.0 * np.pi * t)
     initial_conds = lambda x: 0.0 * x
 
