@@ -63,7 +63,11 @@ class BackwardEuler:
         self.U = np.zeros((self.J + 1, self.N + 1))
 
     # There are undoubtedly good solvers out there but I wanted to showcase what I know
-    def solve(self, status_bar=False):
+    def solve(self):
+        """
+        Solve the heat equation using the backward euler finite difference scheme described in the readme
+        :return:
+        """
         # Construct system
         maindiag = -2.0 * np.ones(self.J + 1) * self.lambd
         subdiag = np.ones(self.J + 1) * self.lambd
@@ -85,6 +89,13 @@ class BackwardEuler:
 
     # adapted from https://matplotlib.org/mpl_toolkits/mplot3d/tutorial.html
     def plotSolution(self, tank_only=False):
+        """
+        Plot a 3D surface of the evolution of heat energy in the system.
+
+        :param tank_only: Plot the solution only for the portion of x that lie in the tank
+        :type tank_only: bool
+        :return:
+        """
         fig = plt.figure()
         ax = fig.gca(projection='3d')
 
