@@ -1,7 +1,9 @@
 import numpy as np
+import scipy.sparse as sp
+import scipy.sparse.linalg as la
 
 class BackwardEuler:
-    def __init__(self, rod_xl, rod_xr, tank_xl, tank_xr, t0, tf, beta, J, N, solar_flux, source=None):
+    def __init__(self, rod_xl, rod_xr, tank_xl, tank_xr, t0, tf, beta, J, N, solar_flux, initial_conds, source=None):
         """
         BackwardEuler class to save heat state for analysis
 
@@ -23,8 +25,10 @@ class BackwardEuler:
         :type J: int
         :param N: number of intervals in t direction
         :type N: int
-        :param solar_flux: This represents the heat flux in at rod_xl. Must be non-negative during the day and non-positive at night.
+        :param solar_flux: this represents the heat flux in at rod_xl. Must be non-negative during the day and non-positive at night.
         :type solar_flux: function
+        :param initial_conds: initial conditions of the system
+        :type initial_conds: function
         :param source: This is the source term. For our purposes it is none but it could be useful in modeling lateral heat loss
         :type source: function
         """
@@ -38,6 +42,7 @@ class BackwardEuler:
         self.J = J
         self.N = N
         self.solar_flux = solar_flux
+        self.initial_conds = initial_conds
         self.source = source
 
         self.L = self.rod_xr - self.rod_xl                                  # Total system length
@@ -49,5 +54,26 @@ class BackwardEuler:
         self.x = np.linspace(self.rod_xl, self.rod_xr, self.J + 1)
         self.t = np.linspace(self.t0, self.tf, self.N + 1)
         self.betas = np.array(self.beta(self.x))
+        if self.source is None:
+            self.source = lambda x: 0.0 * x
+        self.lambd = self.betas * self.k / self.h**2
+        self.U = np.zeros(self.J + 1, self.N + 1)
 
-    # def solve(self, status_bar=False):
+    # There are undoubtedly good solvers out there but I wanted to showcase what I know
+    def solve(self, status_bar=False):
+        # Construct system
+        maindiag = -2.0 * np.ones(self.J + 1) * self.lambd
+        subdiag = np.ones(self.J + 1) * self.lambd
+        supdiag = np.ones(self.J + 1)
+        supdiag[1] = 2
+        supdiag *= self.lambd
+        bottomdiag = np.ones(1)
+        M = sp.spdiags(np.array([bottomdiag.tolist(), subdiag.tolist(), maindiag.tolist(), supdiag.tolist()]), np.array([self.J + 1, -1, 0, 1]), self.J + 1, self.J + 1)
+        A = sp.eye(self.J + 1, self.J + 1) - M
+        self.U[:, 0] = self.initial_conds(self.x)
+
+        # Solve system
+        for i in range(0, self.N + 2):
+            b = np.zeros(self.J + 1)
+            b[0] = 2 * self.k * self.lambd[0] * self.solar_flux(self.t[i]) + self.source(self.x)
+            self.U[:, i + 1] = la.spsolve(A, self.U[:, i + 1] + b)
