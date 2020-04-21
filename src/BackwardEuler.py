@@ -57,7 +57,7 @@ class BackwardEuler:
         if self.source is None:
             self.source = lambda x: 0.0 * x
         self.lambd = self.betas * self.k / self.h**2
-        self.U = np.zeros(self.J + 1, self.N + 1)
+        self.U = np.zeros((self.J + 1, self.N + 1))
 
     # There are undoubtedly good solvers out there but I wanted to showcase what I know
     def solve(self, status_bar=False):
@@ -67,13 +67,60 @@ class BackwardEuler:
         supdiag = np.ones(self.J + 1)
         supdiag[1] = 2
         supdiag *= self.lambd
-        bottomdiag = np.ones(1)
-        M = sp.spdiags(np.array([bottomdiag.tolist(), subdiag.tolist(), maindiag.tolist(), supdiag.tolist()]), np.array([self.J + 1, -1, 0, 1]), self.J + 1, self.J + 1)
+        bottomdiag = np.ones(self.J + 1)
+        data = np.array([bottomdiag.tolist(), subdiag.tolist(), maindiag.tolist(), supdiag.tolist()])
+        M = sp.spdiags(data, np.array([self.J + 1, -1, 0, 1]), self.J + 1, self.J + 1)
         A = sp.eye(self.J + 1, self.J + 1) - M
         self.U[:, 0] = self.initial_conds(self.x)
 
         # Solve system
-        for i in range(0, self.N + 2):
+        for i in range(1, self.N):
             b = np.zeros(self.J + 1)
-            b[0] = 2 * self.k * self.lambd[0] * self.solar_flux(self.t[i]) + self.source(self.x)
-            self.U[:, i + 1] = la.spsolve(A, self.U[:, i + 1] + b)
+            b[0] = 2 * self.k * self.lambd[0] * self.solar_flux(self.t[i])
+            b += self.source(self.x)
+            self.U[:, i + 1] = la.spsolve(A, self.U[:, i] + b)
+
+    # taken from https://matplotlib.org/mpl_toolkits/mplot3d/tutorial.html
+    def plotSolution(self, tank_only=False):
+        from mpl_toolkits.mplot3d import Axes3D
+        import matplotlib.pyplot as plt
+        from matplotlib import cm
+        from matplotlib.ticker import LinearLocator, FormatStrFormatter
+        import numpy as np
+
+        fig = plt.figure()
+        ax = fig.gca(projection='3d')
+
+        # Plot the surface.
+        tank_xl_index = 0
+        tank_xr_index = 0
+        for i in range(0, len(self.x)):
+            if self.x[i] >= self.tank_xl:
+                tank_xl_index = i
+                break
+
+        for i in range(tank_xl_index, len(self.x)):
+            if self.x[i] >= self.tank_xr:
+                tank_xr_index = i
+                break
+
+        # Make data.
+        if tank_only:
+            X, T = np.meshgrid(self.x[tank_xl_index:tank_xr_index + 1], self.t)
+            U = np.transpose(self.U[tank_xl_index:tank_xr_index + 1, :])
+        else:
+            X, T = np.meshgrid(self.x, self.t)
+            U = np.transpose(self.U)
+
+        surf = ax.plot_surface(X, T, U, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+
+        # Customize the z axis.
+        ax.set_xlabel("x")
+        ax.set_ylabel("t")
+        ax.set_zlabel("Heat")
+        ax.zaxis.set_major_locator(LinearLocator(10))
+        ax.zaxis.set_major_formatter(FormatStrFormatter('%.02f'))
+
+        # Add a color bar which maps values to colors.
+        fig.colorbar(surf, shrink=0.5, aspect=5)
+        plt.show()
