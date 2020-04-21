@@ -16,6 +16,7 @@ my hope that this model captures the behavior of the system.
 For this system, I will use backward Euler to ensure consistency and stability 
 considerations of the solution. Also, the solar flux is done using a centered difference about x = 0. 
 The discussion above applied to backward Euler gives the finite difference scheme below:
+
 ![](fig1.png)
 
 Here Q is the source term, h is the x-step width, k is the t-step width, and lambda = beta * k / h^2 
