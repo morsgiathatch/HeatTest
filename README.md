@@ -6,9 +6,9 @@ This repository is for the heat test required for the computational physics inte
 For simplicity I chose to model this system as heat transfer throughout a rod of 
 lenght L with lateral insulation where the material of the rod changes at the storage tank. 
 Thus the density, thermal conductivities, and 
-specific heats vary as a function of x. For continuity I prescribe that the heat
-at the endpoints be equal, i.e. U(xl) = U(xr). Additionally, the pump direction
-and the solar panel give a heat flux rightward through the rod so
+specific heats vary as a function of x. Initially I believed continuity prescription was physical but
+after correcting a bug I saw that it was not. I am currently using homogeneous Dirichlet conditions.
+Additionally, the pump direction and the solar panel give a heat flux rightward through the rod so
 d/dx U(xl) = f(t) where f(t) > 0 during the day, and negative at night. It is
 my hope that this model captures the behavior of the system.
 
