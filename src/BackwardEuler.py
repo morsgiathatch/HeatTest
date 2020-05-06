@@ -7,7 +7,7 @@ from matplotlib import cm
 
 
 class BackwardEuler:
-    def __init__(self, rod_xl, rod_xr, tank_xl, tank_xr, t0, tf, beta, J, N, solar_flux, initial_conds, area=lambda x: np.ones(len(x)), solar_panel_area=1.0, pump_speed=lambda x: np.zeros(len(x)), source=None):
+    def __init__(self, rod_xl, rod_xr, tank_xl, tank_xr, t0, tf, beta, J, N, solar_flux, initial_conds, area=lambda x: np.ones(len(x)), source=None):
         """
         BackwardEuler class to save heat state for analysis
 
@@ -35,9 +35,7 @@ class BackwardEuler:
         :type initial_conds: function
         :param area: optional cross-sectional area function of the rod. Default is 1
         :type area: function
-        :param solar_panel_area: optional area of solar panel. Default is 1
-        :type solar_panel_area: float
-        :param source: this is the optional source term. For our purposes it is none but it could be useful in modeling lateral heat loss
+        :param source: optional source term. For our purposes it is none but it could be useful in modeling lateral heat loss
         :type source: function
         """
         self.rod_xl = rod_xl
@@ -52,8 +50,6 @@ class BackwardEuler:
         self.solar_flux = solar_flux
         self.initial_conds = initial_conds
         self.area = area
-        self.solar_panel_area = solar_panel_area
-        self.pump_speed = pump_speed
         self.source = source
 
         self.L = self.rod_xr - self.rod_xl                                  # Total system length
@@ -68,8 +64,7 @@ class BackwardEuler:
         self.areas = np.array(self.area(self.x))
         if self.source is None:
             self.source = lambda x: 0.0 * x
-        self.lambd = self.betas * self.k / self.h**2 * self.areas
-        self.pump_speeds = np.array(self.pump_speed(self.x))
+        self.mu = self.betas * self.k / self.h ** 2 * self.areas           # Make mu include diffusivity and cross-sectional area for simplicity
 
         self.U = np.zeros((self.J + 1, self.N + 1))
 
@@ -80,17 +75,20 @@ class BackwardEuler:
         :return:
         """
         # Construct system
-        maindiag = -2.0 * np.ones(self.J + 1) * self.lambd
-        subdiag = np.ones(self.J + 1) * self.lambd
+        maindiag = -2.0 * np.ones(self.J + 1) * self.mu
+        subdiag = np.ones(self.J + 1) * self.mu
         # subdiag[self.J - 1] *= 2.0                                         # Homogeneous Neumann conditions
         supdiag = np.ones(self.J + 1)
-        supdiag[1] = 2
-        supdiag *= self.lambd
-        # bottomdiag = np.ones(self.J + 1) * self.lambd                      # Continuity at endpoints
+        # supdiag[1] = 2                                                     # Add no flux term to first row in matrix
+        supdiag[1] = 0
+        maindiag[0] = 0
+        supdiag *= self.mu
+        # bottomdiag = np.ones(self.J + 1) * self.mu                         # Continuity at endpoints
         bottomdiag = np.zeros(self.J + 1)
         data = np.array([bottomdiag.tolist(), subdiag.tolist(), maindiag.tolist(), supdiag.tolist()])
         M = sp.spdiags(data, np.array([-1 * self.J, -1, 0, 1]), self.J + 1, self.J + 1)
-        Idiag = np.ones(self.J + 1) * self.areas
+        Idiag = np.ones(self.J + 1)
+        Idiag[1:] *= self.areas[1:]
         A = sp.spdiags(Idiag, np.array([0]), self.J + 1, self.J + 1) - M
 
         # Set initial conditions
@@ -99,18 +97,15 @@ class BackwardEuler:
         # Solve system
         for i in range(1, self.N):
             b = np.zeros(self.J + 1)
-            b[0] = 2 * self.k * self.lambd[0] / self.areas[0] * self.solar_flux(self.t[i])
+            b[0] = self.k * self.solar_flux(self.t[i - 1])
             b += self.areas * self.source(self.x)
 
-            # Add pump term
-            vu = np.zeros(len(self.U[:, i]))
-            vu[1:self.J] = self.U[2:self.J + 1, i] * self.areas[2: self.J + 1]*self.pump_speeds[2: self.J + 1] - self.U[0: self.J - 1, i] * self.areas[0: self.J - 1]*self.pump_speeds[0: self.J - 1]
-            vu[0] = self.U[1, i]*self.areas[1]*self.pump_speeds[1] - self.U[self.J, i]*self.areas[self.J]*self.pump_speeds[self.J]
-            vu[self.J] = self.U[0, i]*self.areas[0]*self.pump_speeds[0] - self.U[self.J - 1, i]*self.areas[self.J - 1]*self.pump_speeds[self.J - 1]
+            area_temp = np.array(self.areas)
+            area_temp[0] = 1
+            self.U[:, i + 1] = (la.spsolve(A, area_temp * self.U[:, i] + b))
 
-            self.U[:, i + 1] = (la.spsolve(A, self.areas * self.U[:, i] + b + self.k * vu / (2.0 * self.h)))
-            self.U[self.J, i + 1] = 0.0                                    # Homogeneous Dirichlet condition
-            self.U[:, i + 1] = self.U[:, i + 1].clip(min=0)                # Don't allow negative heat
+            # self.U[self.J, i + 1] = 0.0                                    # Homogeneous Dirichlet condition
+            # self.U[:, i + 1] = self.U[:, i + 1].clip(min=0)                # Don't allow negative heat
 
     # adapted from https://matplotlib.org/mpl_toolkits/mplot3d/tutorial.html
     def plot_solution(self, tank_only=False):
@@ -150,7 +145,7 @@ class BackwardEuler:
         # Customize the z axis.
         ax.set_xlabel("x (meters)")
         ax.set_ylabel("t (days)")
-        #ax.set_zlabel("Heat Energy (Joules)")
+        ax.set_zlabel("Temperature (Kelvins from equilibrium)")
 
         # Add a color bar which maps values to colors.
         plt.show()
