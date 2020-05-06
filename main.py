@@ -1,5 +1,5 @@
-from src import BackwardEuler as be
 import numpy as np
+from src import BackwardEuler as be
 
 
 # Main driver for program
@@ -8,7 +8,7 @@ def main():
     rod_xl = 0.0                                                            # left end point of system (meters)
     rod_xr = 10.0                                                           # right end point of system (meters)
     tank_xl = 4.0                                                           # left end point of tank (meters)
-    tank_xr = 6.0                                                           # left end point of tank (meters)
+    tank_xr = 6.0                                                           # right end point of tank (meters)
     t0 = 0.0                                                                # initial time (days)
     tf = 10.0                                                               # final time (days)
     J = 200                                                                 # number of x intervals
@@ -19,7 +19,7 @@ def main():
     rod_spec_heat = 460.548                                                 # iron specific heat J / (kg * K)
     rod_dens = 7300                                                         # iron density kg / m^3
     solar_panel_width = 0.01                                                # solar panel width in meters. Only need solar panel width assuming a rectangular panel
-    abs_rate = 0.215                                                        # Absorption percentage of solar flux
+    abs_rate = 0.215                                                        # absorption percentage of solar flux
     solar_energy_flux = (1000.0 * abs_rate * seconds_per_day /              # solar energy flux at earth surface at equator. Includes specific heat, density, and width for later convenience
                          (rod_spec_heat * rod_dens * solar_panel_width))
     rod_area = 0.025 ** 2 * np.pi                                           # cross sectional area of rod in meters^2
@@ -45,7 +45,7 @@ def main():
                 ret_area[i] = rod_area
         return ret_area
 
-    # simulate day and night.
+    # Simulate day and night
     def solar_flux(t):
         flux = solar_energy_flux * np.sin(2.0 * np.pi * t)
         # Uncomment the below for insulation during night

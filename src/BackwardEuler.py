@@ -1,9 +1,9 @@
 import numpy as np
 import scipy.sparse as sp
 import scipy.sparse.linalg as la
-from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 from matplotlib import cm
+from mpl_toolkits.mplot3d import Axes3D
 
 
 class BackwardEuler:
@@ -68,13 +68,8 @@ class BackwardEuler:
 
         self.U = np.zeros((self.J + 1, self.N + 1))
 
-    # There are undoubtedly good solvers out there but I wanted to showcase what I know
-    def solve(self):
-        """
-        Solve the heat equation using the backward euler finite difference scheme described in the readme
-        :return:
-        """
-        # Construct system
+    # Construct matrix in readme
+    def constructSystem(self):
         maindiag = -2.0 * np.ones(self.J + 1) * self.mu
         subdiag = np.ones(self.J + 1) * self.mu
         # subdiag[self.J - 1] *= 2.0                                         # Homogeneous Neumann conditions
@@ -89,7 +84,15 @@ class BackwardEuler:
         M = sp.spdiags(data, np.array([-1 * self.J, -1, 0, 1]), self.J + 1, self.J + 1)
         Idiag = np.ones(self.J + 1)
         Idiag[1:] *= self.areas[1:]
-        A = sp.spdiags(Idiag, np.array([0]), self.J + 1, self.J + 1) - M
+        return sp.spdiags(Idiag, np.array([0]), self.J + 1, self.J + 1) - M
+
+    # There are undoubtedly good solvers out there but I wanted to showcase what I know
+    def solve(self):
+        """
+        Solve the heat equation using the Backward Euler finite difference scheme described in the readme
+        :return:
+        """
+        A = self.constructSystem()
 
         # Set initial conditions
         self.U[:, 0] = self.initial_conds(self.x)
@@ -107,19 +110,8 @@ class BackwardEuler:
             # self.U[self.J, i + 1] = 0.0                                    # Homogeneous Dirichlet condition
             # self.U[:, i + 1] = self.U[:, i + 1].clip(min=0)                # Don't allow negative heat
 
-    # adapted from https://matplotlib.org/mpl_toolkits/mplot3d/tutorial.html
-    def plot_solution(self, tank_only=False):
-        """
-        Plot a 3D surface of the evolution of heat energy in the system.
-
-        :param tank_only: Plot the solution only for the portion of x that lie in the tank
-        :type tank_only: bool
-        :return:
-        """
-        fig = plt.figure()
-        ax = fig.gca(projection='3d')
-
-        # Plot the surface.
+    # Get x indices of tank in system
+    def get_tank_indexs(self):
         tank_xl_index = 0
         tank_xr_index = 0
         for i in range(0, len(self.x)):
@@ -131,8 +123,22 @@ class BackwardEuler:
             if self.x[i] >= self.tank_xr:
                 tank_xr_index = i
                 break
+        return tank_xl_index, tank_xr_index
 
-        # Make data.
+    # Adapted from https://matplotlib.org/mpl_toolkits/mplot3d/tutorial.html
+    def plot_solution(self, tank_only=False):
+        """
+        Plot a 3D surface of the evolution of heat energy in the system.
+
+        :param tank_only: Plot the solution only for the portion of x values that lie in the tank
+        :type tank_only: bool
+        :return:
+        """
+        fig = plt.figure()
+        ax = fig.gca(projection='3d')
+
+        tank_xl_index, tank_xr_index = self.get_tank_indexes()
+
         if tank_only:
             X, T = np.meshgrid(self.x[tank_xl_index:tank_xr_index + 1], self.t)
             U = np.transpose(self.U[tank_xl_index:tank_xr_index + 1, :])
@@ -142,10 +148,8 @@ class BackwardEuler:
 
         surf = ax.plot_surface(X, T, U, cmap=cm.coolwarm, linewidth=0, antialiased=False)
 
-        # Customize the z axis.
         ax.set_xlabel("x (meters)")
         ax.set_ylabel("t (days)")
-        ax.set_zlabel("Temperature (Kelvins from equilibrium)")
+        ax.set_zlabel("Temperature (Kelvin, from equilibrium)")
 
-        # Add a color bar which maps values to colors.
         plt.show()
