@@ -111,7 +111,7 @@ class BackwardEuler:
             # self.U[:, i + 1] = self.U[:, i + 1].clip(min=0)                # Don't allow negative heat
 
     # Get x indices of tank in system
-    def get_tank_indexs(self):
+    def get_tank_indexes(self):
         tank_xl_index = 0
         tank_xr_index = 0
         for i in range(0, len(self.x)):
